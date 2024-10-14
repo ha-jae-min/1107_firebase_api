@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.zerock.api1014.product.domain.Product;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,5 +21,6 @@ public class ProductListDTO {
     private String fileName;
     @Builder.Default
     private List<String> tags = new ArrayList<>();
+
 
 }
