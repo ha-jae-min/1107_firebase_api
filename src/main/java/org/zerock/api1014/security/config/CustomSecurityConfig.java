@@ -1,6 +1,7 @@
 package org.zerock.api1014.security.config;
 
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -11,11 +12,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.zerock.api1014.security.filter.JWTCheckFilter;
+import org.zerock.api1014.security.util.JWTUtil;
 
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
+@RequiredArgsConstructor
 public class CustomSecurityConfig {
+
+    private final JWTUtil jwtUtil;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -31,7 +36,7 @@ public class CustomSecurityConfig {
 
         http.csrf(config -> config.disable());
 
-        http.addFilterBefore(new JWTCheckFilter(), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new JWTCheckFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
