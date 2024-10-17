@@ -1,16 +1,17 @@
 package org.zerock.api1014.member.controller;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.zerock.api1014.member.dto.MemberDTO;
 import org.zerock.api1014.member.dto.TokenRequestDTO;
 import org.zerock.api1014.member.dto.TokenResponseDTO;
+import org.zerock.api1014.member.exception.MemberExceptions;
 import org.zerock.api1014.member.service.MemberService;
 import org.zerock.api1014.security.util.JWTUtil;
 
@@ -25,6 +26,15 @@ public class MemberController {
     private final MemberService memberService;
 
     private final JWTUtil jWTUtil;
+
+    @Value("${org.zerock.accessTime}")
+    private int accessTime;
+
+    @Value("${org.zerock.refreshTime}")
+    private int refreshTime;
+
+    @Value("${org.zerock.alwaysNew}")
+    private boolean alwaysNew;
 
     @PostMapping("makeToken")
     public ResponseEntity<TokenResponseDTO> makeToken(@RequestBody @Validated TokenRequestDTO tokenRequestDTO) {
@@ -41,8 +51,8 @@ public class MemberController {
                 "email",memberDTO.getEmail(),
                 "role", memberDTO.getRole() );
 
-        String accesToken = jWTUtil.createToken(claimMap,30);
-        String refreshToken = jWTUtil.createToken(claimMap,360);
+        String accesToken = jWTUtil.createToken(claimMap,accessTime);
+        String refreshToken = jWTUtil.createToken(claimMap,refreshTime);
 
         TokenResponseDTO tokenResponseDTO = new TokenResponseDTO();
         tokenResponseDTO.setAccessToken(accesToken);
@@ -53,4 +63,80 @@ public class MemberController {
 
     }
 
+    @PostMapping(value="refreshToken",
+            consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+            )
+    public ResponseEntity<TokenResponseDTO> refreshToken(
+            @RequestHeader("Authorization") String accessToken,
+            String refreshToken) {
+
+        //만일 accessToken이 없다면 혹은 refreshToken이 없다면
+        if(accessToken == null || refreshToken == null) {
+            throw MemberExceptions.TOKEN_NOT_ENOUGH.get();
+        }
+        //accessToken Bearer (7) 잘라낼때 문제가 발생한다면
+        if(!accessToken.startsWith("Bearer ")) {
+            throw MemberExceptions.ACCESSTOKEN_TOO_SHORT.get();
+        }
+        String accessTokenStr = accessToken.substring("Bearer ".length());
+        //AccessToken의 만료 여부 체크
+        try{
+            Map<String,Object> payload = jWTUtil.validateToken(accessTokenStr);
+
+            String email = payload.get("email").toString();
+
+            TokenResponseDTO tokenResponseDTO = new TokenResponseDTO();
+            tokenResponseDTO.setAccessToken(accessTokenStr);
+            tokenResponseDTO.setEmail(email);
+            tokenResponseDTO.setRefreshToken(refreshToken);
+
+            return ResponseEntity.ok(tokenResponseDTO);
+
+        }catch(ExpiredJwtException ex){
+            //정상적으로 만료된 경우
+
+            //만일 Refresh Token마저 만료되었다면 catch
+            try{
+                Map<String,Object> payload = jWTUtil.validateToken(refreshToken);
+                String email = payload.get("email").toString();
+                String role = payload.get("role").toString();
+                String newAccesToken = null;
+                String newRrefreshToken = null;
+
+                if(alwaysNew) {
+                    Map<String, Object> claimMap = Map.of("email", email, "role", role);
+                    newAccesToken = jWTUtil.createToken(claimMap,accessTime);
+                    newRrefreshToken = jWTUtil.createToken(claimMap,refreshTime);
+                }
+                TokenResponseDTO tokenResponseDTO = new TokenResponseDTO();
+                tokenResponseDTO.setAccessToken(newAccesToken);
+                tokenResponseDTO.setRefreshToken(newRrefreshToken);
+                tokenResponseDTO.setEmail(email);
+
+                return ResponseEntity.ok(tokenResponseDTO);
+
+            }catch(ExpiredJwtException ex2){
+                throw MemberExceptions.REQUIRE_SIGN_IN.get();
+            }
+        }
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

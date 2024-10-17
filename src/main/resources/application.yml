@@ -30,6 +30,9 @@ spring:
 
 org:
   zerock:
+    accessTime: 3
+    refreshTime: 10
+    alwaysNew: true
     upload:
       path: upload
 
