@@ -3,7 +3,7 @@ spring:
     name: api1
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/bootdb
+    url: jdbc:mariadb://localhost:13306/bootdb
     username: bootdbuser
     password: bootdbuser
 

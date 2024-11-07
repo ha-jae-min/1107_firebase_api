@@ -121,6 +121,16 @@ public class MemberController {
             }
         }
     }
+
+
+    @RequestMapping("kakao")
+    public String[] getMemberFromKakao(String accessToken) {
+        log.info("access Token ");
+        log.info(accessToken);
+        memberService.getKakaoMember(accessToken);
+        return new String[]{"AAA","BBB","CCC"};
+    }
+
 }
 
 
